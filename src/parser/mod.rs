@@ -1,12 +1,8 @@
-use core::marker::PhantomData;
 #[cfg(any(feature = "track_open_tags", feature = "parser_rules"))]
 use alloc::vec;
+use core::marker::PhantomData;
 
 use bitflags::bitflags;
-
-#[cfg(feature = "parser_rules")]
-/// Parser rules, which can be pushed into a [BBParser] mid-iteration to change how parsing behaves.
-pub mod rules;
 
 /// Provides configuration information for [BBParser], including enabled feature flags.
 #[derive(Default)]
@@ -31,10 +27,22 @@ bitflags! {
 /// Provides a BBCode parser over the given input, in the form of an iterator.
 /// BBParser is a *pull parser*, parsing the input on an on-demand basis as the user calls [BBParser::next].
 /// # Allocations
-#[cfg_attr(not(any(feature = "track_open_tags", feature = "parser_rules")), doc ="BBParser does not allocate on the current configuration." )]
-#[cfg_attr(any(feature = "track_open_tags", feature = "parser_rules"), doc = "BBParser allocates on the current configuration when:" )]
-#[cfg_attr(feature = "track_open_tags", doc = "- An opening tag is encountered. (`track_open_tags`)")]
-#[cfg_attr(feature = "parser_rules", doc = "- A parser rule is inserted. (`parser_rules`)")]
+#[cfg_attr(
+    not(any(feature = "track_open_tags", feature = "parser_rules")),
+    doc = "BBParser does not allocate on the current configuration."
+)]
+#[cfg_attr(
+    any(feature = "track_open_tags", feature = "parser_rules"),
+    doc = "BBParser allocates on the current configuration when:"
+)]
+#[cfg_attr(
+    feature = "track_open_tags",
+    doc = "- An opening tag is encountered. (`track_open_tags`)"
+)]
+#[cfg_attr(
+    feature = "parser_rules",
+    doc = "- A parser rule is inserted. (`parser_rules`)"
+)]
 #[doc(alias = "parser")]
 pub struct BBParser<'a, CustomTy = ()>
 where
@@ -50,21 +58,27 @@ where
     _custom_ty: PhantomData<CustomTy>,
 }
 
-impl<'a, CustomTy> BBParser<'a, CustomTy>
-where
-    CustomTy: Clone,
-{
-    /// Returns all input text left to parse
-    pub fn remaining(&self) -> &str {
-        &self.input[self.loc..]
+/// Standard constructors.
+impl<'a> BBParser<'a> {
+    /// Constructs a new parser for the given input string, using the default [ParserConfig].
+    pub fn new(input: &'a str) -> BBParser<'a> {
+        Self::new_with_custom(input)
     }
 
-    pub fn remaining_after(&self, after: usize) -> &str {
-        &self.input[(self.loc + after)..]
+    /// Constructs a new parser for the given input string and configuration.
+    pub fn with_config(input: &'a str, config: ParserConfig) -> BBParser<'a> {
+        Self::with_config_and_custom(input, config)
     }
+}
 
-    pub fn new(input: &'a str) -> BBParser<'a, CustomTy> {
-        Self {
+/// Custom token type compatible constructors.
+impl<'a> BBParser<'a> {
+    /// Constructs a new parser for the given input string, using the default [ParserConfig].
+    pub fn new_with_custom<CustomTy>(input: &'a str) -> BBParser<'a, CustomTy>
+    where
+        CustomTy: Clone,
+    {
+        BBParser::<'a, CustomTy> {
             input,
             config: Default::default(),
             loc: 0,
@@ -76,8 +90,15 @@ where
         }
     }
 
-    pub fn with_config(input: &'a str, config: ParserConfig) -> BBParser<'a, CustomTy> {
-        Self {
+    /// Constructs a new parser for the given input string and configuration.
+    pub fn with_config_and_custom<CustomTy>(
+        input: &'a str,
+        config: ParserConfig,
+    ) -> BBParser<'a, CustomTy>
+    where
+        CustomTy: Clone,
+    {
+        BBParser::<'a, CustomTy> {
             input,
             config,
             loc: 0,
@@ -90,6 +111,21 @@ where
     }
 }
 
+impl<'a, CustomTy> BBParser<'a, CustomTy>
+where
+    CustomTy: Clone,
+{
+    /// Returns all input text left to parse
+    pub fn remaining(&self) -> &str {
+        &self.input[self.loc..]
+    }
+
+    /// Returns all input text left to parse with the given offset from [BBParser::remaining][Self::remaining].
+    pub fn remaining_after(&self, after: usize) -> &str {
+        &self.input[(self.loc + after)..]
+    }
+}
+
 impl<'a, CustomTy> Iterator for BBParser<'a, CustomTy>
 where
     CustomTy: Clone,
@@ -98,26 +134,42 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         fn to_token_kind<'a, CustomTy>(tag: &'a str, args: &'a str) -> TokenKind<'a, CustomTy> {
-            
             if tag.starts_with('/') {
                 // End block.
-                TokenKind::CloseBBTag(BBTag { tag: &tag["/".len()..], args }, None)
+                TokenKind::CloseBBTag(
+                    BBTag {
+                        tag: &tag["/".len()..],
+                        args,
+                    },
+                    None,
+                )
             } else if args.ends_with('/') {
                 // Standalone block.
-                TokenKind::StandaloneBBTag(BBTag { tag, args: &args[..(args.len() - "/".len())] })
+                TokenKind::StandaloneBBTag(BBTag {
+                    tag,
+                    args: &args[..(args.len() - "/".len())],
+                })
             } else {
                 TokenKind::OpenBBTag(BBTag { tag, args })
             }
         }
 
         fn to_token_kind_single<CustomTy>(tag: &str) -> TokenKind<'_, CustomTy> {
-            
             if tag.starts_with('/') {
                 // End block.
-                TokenKind::CloseBBTag(BBTag { tag: &tag["/".len()..], args: ""}, None)
+                TokenKind::CloseBBTag(
+                    BBTag {
+                        tag: &tag["/".len()..],
+                        args: "",
+                    },
+                    None,
+                )
             } else if tag.ends_with('/') {
                 // Standalone block.
-                TokenKind::StandaloneBBTag(BBTag { tag: &tag[..(tag.len() - "/".len())], args: "" })
+                TokenKind::StandaloneBBTag(BBTag {
+                    tag: &tag[..(tag.len() - "/".len())],
+                    args: "",
+                })
             } else {
                 TokenKind::OpenBBTag(BBTag { tag, args: "" })
             }
@@ -137,9 +189,7 @@ where
                 if TAG_OPENERS.contains(&first_char) {
                     // We have a tag, figure out what it is.
                     let loc = first_char.len_utf8();
-                    let rem_after = {
-                        &self.input[(self.loc + loc)..]
-                    };
+                    let rem_after = { &self.input[(self.loc + loc)..] };
 
                     let tag_end = rem_after.find(']');
 
@@ -151,28 +201,26 @@ where
                     let tag_end = tag_end.unwrap();
                     // We live in a wonderful world where trim() does not allocate. Bless.
                     let tag_contents = rem_after[..tag_end].trim();
-                    
-                    let span = &{
-                        &self.input[self.loc..]
-                    }[..(tag_contents.len() + "[]".len())];
+
+                    let span = &{ &self.input[self.loc..] }[..(tag_contents.len() + "[]".len())];
                     let old_loc = self.loc;
                     self.loc += span.len();
 
                     if let Some(arg_idx) = tag_contents.find(['=', ' ']) {
                         let (tag, args) = tag_contents.split_at(arg_idx);
                         // Inlined from Self::remaining() due to the borrowchecker not being able to see per-field borrows.
-                        
+
                         break 'tk Token::<'a, CustomTy> {
                             span,
                             start: old_loc,
-                            kind: to_token_kind(tag, args)
-                        }
+                            kind: to_token_kind(tag, args),
+                        };
                     } else {
                         break 'tk Token::<'a, CustomTy> {
                             span,
                             start: old_loc,
-                            kind: to_token_kind_single(tag_contents)
-                        }
+                            kind: to_token_kind_single(tag_contents),
+                        };
                     }
                 }
             }
@@ -184,7 +232,7 @@ where
                 .map(|x| x.0)
                 .unwrap_or(self.remaining().len());
 
-            let range = self.loc..(self.loc+segment_end);
+            let range = self.loc..(self.loc + segment_end);
             self.loc += range.len();
             break 'tk Token::<'a, CustomTy> {
                 start: range.start,
@@ -200,16 +248,22 @@ where
             }
 
             if let TokenKind::CloseBBTag(BBTag { tag: removee, .. }, _) = token.kind {
-                let to_remove: Option<usize> = 'blk: { 
+                let to_remove: Option<usize> = 'blk: {
                     for (idx, tag) in self.tags.iter().enumerate().rev() {
                         if let TokenKind::OpenBBTag(ref t) = tag.kind {
                             if t.tag.eq_ignore_ascii_case(removee) {
                                 break 'blk Some(idx);
-                            } else if !self.config.feature_flags.contains(ParserFeature::POP_UNORDERED) {
+                            } else if !self
+                                .config
+                                .feature_flags
+                                .contains(ParserFeature::POP_UNORDERED)
+                            {
                                 break 'blk None;
                             }
                         } else {
-                            unreachable!("Tag stack should never contain anything except open tags.");
+                            unreachable!(
+                                "Tag stack should never contain anything except open tags."
+                            );
                         }
                     }
 
@@ -272,7 +326,11 @@ where
     CustomTy: Clone,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Token").field("span", &self.span).field("start", &self.start).field("kind", &self.kind).finish()
+        f.debug_struct("Token")
+            .field("span", &self.span)
+            .field("start", &self.start)
+            .field("kind", &self.kind)
+            .finish()
     }
 }
 
@@ -303,6 +361,10 @@ pub enum TokenKind<'a, CustomTy = ()> {
     Custom(CustomTy),
 }
 
+#[cfg(feature = "parser_rules")]
+/// Parser rules, which can be pushed into a [BBParser] mid-iteration to change how parsing behaves.
+pub mod rules;
+
 #[cfg(test)]
 mod tests {
     use std::assert_matches::assert_matches;
@@ -315,13 +377,13 @@ mod tests {
 
     #[test]
     pub fn just_text() {
-        let mut parser: BBParser<'static, ()> = BBParser::new(LOREM_IPSUM);
+        let mut parser = BBParser::new(LOREM_IPSUM);
         assert!(parser.all(|x| matches!(x.kind, TokenKind::Text)))
     }
 
     #[test]
     pub fn simple_tags() {
-        let mut parser: BBParser<'static, ()> = BBParser::new(SIMPLE);
+        let mut parser = BBParser::new(SIMPLE);
         assert_matches!(
             parser.next(),
             Some(Token {
@@ -346,7 +408,6 @@ mod tests {
             })
         );
 
-        
         assert_matches!(
             parser.next(),
             Some(Token {

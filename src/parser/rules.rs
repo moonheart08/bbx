@@ -11,7 +11,7 @@ pub enum ParserRuleAction {
     NoParse,
 }
 
-/// Provides the common API for parser rules, 
+/// Provides the common API for parser rules, allowing the programmer to modify parsing behavior.
 pub trait ParserRule<'a, CustomTy = ()>
 where
     CustomTy: Clone,
@@ -29,6 +29,7 @@ where
     }
 }
 
+/// Internal wrapper over parse rules to make them object safe, this is the trait half of the deal.
 pub(super) trait ParserRuleInner<'a, CustomTy = ()>
 where
     CustomTy: Clone,
@@ -40,6 +41,7 @@ where
     fn parse_custom<'b: 'a>(&mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy>;
 }
 
+/// Internal wrapper over parse rules to make them object safe, this is the struct containing the user provided rule.
 pub(super) struct ParserRuleImpl<'a, Rule, CustomTy>
 where
     Rule: ParserRule<'a, CustomTy> + ?Sized,
