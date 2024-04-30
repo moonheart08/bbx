@@ -1,0 +1,14 @@
+[package]
+name = "bbx"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitflags = "^2"
+
+[features]
+default = ["track_open_tags", "parser_rules"]
+track_open_tags = []
+parser_rules = ["track_open_tags"]
+simple_html = ["parser_rules"]
+nightly = []
