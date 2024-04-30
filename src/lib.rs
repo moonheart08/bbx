@@ -1,6 +1,6 @@
 //! Robust BBCode parser with support for emulating legacy parsers, complex parsing extensions, .
 
-#![cfg_attr(feature = "nightly", feature(adt_const_params))]
+#![cfg_attr(test, feature(assert_matches))]
 
 mod parser;
 

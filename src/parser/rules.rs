@@ -91,7 +91,7 @@ pub mod builtin {
         const ACTION: ParserRuleAction = ParserRuleAction::NoParse;
 
         fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool {
-            if let TokenKind::CloseBBTag(BBTag { tag, .. }) = next.kind {
+            if let TokenKind::CloseBBTag(BBTag { tag, .. }, ..) = next.kind {
                 tag.eq_ignore_ascii_case(self.tag_name)
             } else {
                 false
