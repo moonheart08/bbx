@@ -92,7 +92,7 @@ where
 
         let first_char = self.remaining().chars().nth(0)?;
 
-        let token = 'tk: {
+        let mut token = 'tk: {
             if TAG_OPENERS.contains(&first_char) {
                 // We have a tag, figure out what it is.
                 self.loc += first_char.len_utf8();
@@ -133,6 +133,22 @@ where
             if do_pop {
                 self.rule_stack.pop();
             }
+
+            let action = self.rule_stack.last().map(|x| x.action());
+
+            if let Some(action) = action {
+                match action {
+                    rules::ParserRuleAction::CustomParser => {
+                        todo!()
+                    }
+                    rules::ParserRuleAction::NoParse => {
+                        token = Token::<'a, CustomTy> {
+                            kind: TokenKind::Text,
+                            ..token
+                        };
+                    }
+                }
+            }
         }
 
         Some(token)
@@ -170,7 +186,7 @@ mod tests {
     use crate::{BBParser, TokenKind};
 
     const LOREM_IPSUM: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In lorem quam, fermentum id porttitor ac, iaculis eu arcu. Aliquam vulputate tempus felis consequat elementum. Cras auctor nunc a cursus lobortis. Fusce venenatis quam nec eleifend porta. Nulla velit diam, maximus sed lobortis imperdiet, hendrerit id elit. Integer congue congue porttitor. Curabitur at erat urna. Morbi iaculis felis eu est cursus, eu imperdiet nibh consectetur. Proin nisi metus, blandit non placerat hendrerit, facilisis id metus. Aenean fringilla, justo id venenatis rutrum, erat ex vehicula sapien, convallis aliquam augue turpis venenatis risus. In nulla lacus, auctor vitae sapien vel, tristique venenatis mi. Sed iaculis iaculis aliquet.";
-    
+
     #[test]
     pub fn just_text() {
         let mut parser: BBParser<'static, ()> = BBParser::new(LOREM_IPSUM);

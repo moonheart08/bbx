@@ -19,7 +19,7 @@ where
     fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool;
 
     /// Provides a mechanism for
-    fn parse_custom<'b: 'a>(&'a mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy> {
+    fn parse_custom<'b: 'a>(&mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy> {
         unimplemented!("Parse custom triggered ")
     }
 }
@@ -32,7 +32,7 @@ where
 
     fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool;
 
-    fn parse_custom<'b: 'a>(&'a mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy>;
+    fn parse_custom<'b: 'a>(&mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy>;
 }
 
 pub(super) struct ParserRuleImpl<'a, Rule, CustomTy>
@@ -58,7 +58,7 @@ where
         self.rule.check_should_release(next)
     }
 
-    fn parse_custom<'b: 'a>(&'a mut self, parser: &'b BBParser<'b>) -> Option<CustomTy> {
+    fn parse_custom<'b: 'a>(&mut self, parser: &'b BBParser<'b>) -> Option<CustomTy> {
         self.rule.parse_custom(parser)
     }
 }
