@@ -16,7 +16,7 @@ where
 {
     const ACTION: ParserRuleAction;
 
-    fn check_should_release<'b>(&self, next: &Token<'b, CustomTy>) -> bool;
+    fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool;
 
     /// Provides a mechanism for
     fn parse_custom<'b: 'a>(&'a mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy> {
@@ -30,7 +30,7 @@ where
 {
     fn action(&self) -> ParserRuleAction;
 
-    fn check_should_release<'b>(&self, next: &Token<'b, CustomTy>) -> bool;
+    fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool;
 
     fn parse_custom<'b: 'a>(&'a mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy>;
 }
@@ -54,7 +54,7 @@ where
         Rule::ACTION
     }
 
-    fn check_should_release<'b>(&self, next: &Token<'b, CustomTy>) -> bool {
+    fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool {
         self.rule.check_should_release(next)
     }
 
@@ -90,7 +90,7 @@ pub mod builtin {
     {
         const ACTION: ParserRuleAction = ParserRuleAction::NoParse;
 
-        fn check_should_release<'b>(&self, next: &Token<'b, CustomTy>) -> bool {
+        fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool {
             if let TokenKind::CloseBBTag(BBTag { tag, .. }) = next.kind {
                 tag.eq_ignore_ascii_case(self.tag_name)
             } else {

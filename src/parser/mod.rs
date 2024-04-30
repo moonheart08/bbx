@@ -1,4 +1,4 @@
-use std::{any::Any, marker::PhantomData, vec};
+use std::{marker::PhantomData, vec};
 
 use bitflags::bitflags;
 
@@ -115,6 +115,13 @@ where
             unimplemented!()
         };
 
+        #[cfg(feature = "track_open_tags")]
+        {
+            if let TokenKind::OpenBBTag(_) = token.kind {
+                self.tags.push(token.clone());
+            }
+        }
+
         #[cfg(feature = "parser_rules")]
         {
             let do_pop = if let Some(rule) = self.rule_stack.last() {
@@ -128,14 +135,7 @@ where
             }
         }
 
-        #[cfg(feature = "track_open_tags")]
-        {
-            if let TokenKind::OpenBBTag(_) = token.kind {
-                self.tags.push(token.clone());
-            }
-        }
-
-        return Some(token);
+        Some(token)
     }
 }
 
