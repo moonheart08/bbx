@@ -99,7 +99,7 @@ where
             }
         }
 
-        fn to_token_kind_single<'a, CustomTy>(tag: &'a str) -> TokenKind<'a, CustomTy> {
+        fn to_token_kind_single<CustomTy>(tag: &str) -> TokenKind<'_, CustomTy> {
             
             if tag.starts_with('/') {
                 // End block.
@@ -152,13 +152,13 @@ where
                         // Inlined from Self::remaining() due to the borrowchecker not being able to see per-field borrows.
                         
                         break 'tk Token::<'a, CustomTy> {
-                            span: span,
+                            span,
                             start: old_loc,
                             kind: to_token_kind(tag, args)
                         }
                     } else {
                         break 'tk Token::<'a, CustomTy> {
-                            span: span,
+                            span,
                             start: old_loc,
                             kind: to_token_kind_single(tag_contents)
                         }
