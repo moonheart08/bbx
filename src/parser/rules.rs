@@ -1,7 +1,8 @@
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::{BBParser, Token};
 
+/// Represents an action a parser rule can take every [BBParser::next] call.
 pub enum ParserRuleAction {
     /// Implement a fully custom parse action, allowing the user to emit [`TokenKind::Custom`][`super::TokenKind::Custom`]s.
     /// See [ParserRule::parse_custom] for details on how this works.
@@ -10,15 +11,19 @@ pub enum ParserRuleAction {
     NoParse,
 }
 
+/// Provides the common API for parser rules, 
 pub trait ParserRule<'a, CustomTy = ()>
 where
     CustomTy: Clone,
 {
     const ACTION: ParserRuleAction;
 
+    /// Check if this rule should be released (removed) from the current parser, given the next token to be returned.
     fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool;
 
-    /// Provides a mechanism for
+    //TODO: Problem for tomorrow's me, this API doesn't actually work, custom parsers can never release and cannot control how much they parse.
+    /// Provides a mechanism for custom parsing logic, should [ParserRule::ACTION] be [ParserRuleAction::CustomParser].
+    /// Will not be called otherwise.
     fn parse_custom<'b: 'a>(&mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy> {
         unimplemented!("Parse custom triggered ")
     }
@@ -97,5 +102,22 @@ pub mod builtin {
                 false
             }
         }
+    }
+}
+
+impl<'a, CustomTy> BBParser<'a, CustomTy>
+where
+    CustomTy: Clone,
+{
+    pub fn push_rule<Rule>(&'a mut self, rule: Rule)
+    where
+        Rule: ParserRule<'a, CustomTy> + 'a,
+    {
+        self.rule_stack
+            .push(Box::new(ParserRuleImpl::<'a, Rule, CustomTy> {
+                _customty: PhantomData,
+                _lifetime: PhantomData,
+                rule,
+            }))
     }
 }

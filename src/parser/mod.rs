@@ -1,11 +1,17 @@
-use std::{marker::PhantomData, vec};
+use core::marker::PhantomData;
+#[cfg(any(feature = "track_open_tags", feature = "parser_rules"))]
+use alloc::vec;
 
-use bitflags::{bitflags, Flags};
+use bitflags::bitflags;
 
-use self::rules::{ParserRule, ParserRuleImpl};
+#[cfg(feature = "parser_rules")]
+/// Parser rules, which can be pushed into a [BBParser] mid-iteration to change how parsing behaves.
+pub mod rules;
 
+/// Provides configuration information for [BBParser], including enabled feature flags.
 #[derive(Default)]
 pub struct ParserConfig {
+    /// Feature flags for this configuration.
     pub feature_flags: ParserFeature,
 }
 
@@ -22,9 +28,13 @@ bitflags! {
     }
 }
 
-#[cfg(feature = "parser_rules")]
-pub mod rules;
-
+/// Provides a BBCode parser over the given input, in the form of an iterator.
+/// BBParser is a *pull parser*, parsing the input on an on-demand basis as the user calls [BBParser::next].
+/// # Allocations
+#[cfg_attr(not(any(feature = "track_open_tags", feature = "parser_rules")), doc ="BBParser does not allocate on the current configuration." )]
+#[cfg_attr(any(feature = "track_open_tags", feature = "parser_rules"), doc = "BBParser allocates on the current configuration when:" )]
+#[cfg_attr(feature = "track_open_tags", doc = "- An opening tag is encountered. (`track_open_tags`)")]
+#[cfg_attr(feature = "parser_rules", doc = "- A parser rule is inserted. (`parser_rules`)")]
 #[doc(alias = "parser")]
 pub struct BBParser<'a, CustomTy = ()>
 where
@@ -53,22 +63,23 @@ where
         &self.input[(self.loc + after)..]
     }
 
-    pub fn push_rule<Rule>(&'a mut self, rule: Rule)
-    where
-        Rule: ParserRule<'a, CustomTy> + 'a,
-    {
-        self.rule_stack
-            .push(Box::new(ParserRuleImpl::<'a, Rule, CustomTy> {
-                _customty: PhantomData,
-                _lifetime: PhantomData,
-                rule,
-            }))
-    }
-
     pub fn new(input: &'a str) -> BBParser<'a, CustomTy> {
         Self {
             input,
             config: Default::default(),
+            loc: 0,
+            #[cfg(feature = "track_open_tags")]
+            tags: vec![],
+            #[cfg(feature = "parser_rules")]
+            rule_stack: vec![],
+            _custom_ty: PhantomData,
+        }
+    }
+
+    pub fn with_config(input: &'a str, config: ParserConfig) -> BBParser<'a, CustomTy> {
+        Self {
+            input,
+            config,
             loc: 0,
             #[cfg(feature = "track_open_tags")]
             tags: vec![],
@@ -245,7 +256,8 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
+/// A parsed token, as returned by [BBParser::next].
+#[derive(Clone)]
 pub struct Token<'a, CustomTy>
 where
     CustomTy: Clone,
@@ -255,19 +267,39 @@ where
     pub kind: TokenKind<'a, CustomTy>,
 }
 
+impl<'a, CustomTy: core::fmt::Debug> core::fmt::Debug for Token<'a, CustomTy>
+where
+    CustomTy: Clone,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Token").field("span", &self.span).field("start", &self.start).field("kind", &self.kind).finish()
+    }
+}
+
+/// Simple struct representing the tag and (possibly empty) arguments of a bbcode tag.
 #[derive(Debug, Clone)]
 pub struct BBTag<'a> {
+    /// A slice containing the tag.
     pub tag: &'a str,
+    /// A slice containing the tag arguments.
     pub args: &'a str,
 }
 
+/// Represents the type of a token in the parsed data.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum TokenKind<'a, CustomTy = ()> {
+    /// An opening tag in BBCode, ala `[tag]`.
     OpenBBTag(BBTag<'a>),
+    /// A closing tag in BBCode, ala `[/tag]`
     CloseBBTag(BBTag<'a>, Option<usize>),
+    /// A standalone (unpaired) tag in BBCode, ala `[tag/]`
     StandaloneBBTag(BBTag<'a>),
+    /// Unformatted text.
     Text,
-    #[cfg(feature = "parser_rules")]
+    /// A custom tag, emitted by a parser rule.
+    /// # Remarks
+    /// This could be removed entirely when parser rules aren't present, in the future.
     Custom(CustomTy),
 }
 
