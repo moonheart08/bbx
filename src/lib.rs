@@ -28,7 +28,6 @@
 )]
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
-#[cfg(feature = "alloc")]
 extern crate alloc;
 
 mod parser;
