@@ -36,3 +36,6 @@ pub use parser::{BBParser, BBTag, ParserConfig, Token, TokenKind};
 
 #[cfg(feature = "parser_rules")]
 pub use parser::rules;
+
+#[cfg(feature = "html_gen")]
+pub mod html;

@@ -1,0 +1,1 @@
+The current implementation of html output uses a naive, string based approach. In the future moving to html5ever for serialization may be a good move.
