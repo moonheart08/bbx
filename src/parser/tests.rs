@@ -94,6 +94,7 @@ pub fn tag_kinds() {
         TAG_KINDS,
         crate::ParserConfig {
             feature_flags: ParserFeature::POP_UNORDERED,
+            ..Default::default()
         },
     );
     tag_kinds_inner(parser);
@@ -154,6 +155,7 @@ pub fn weird_but_still_closed() {
         WEIRD_BUT_STILL_TEXT,
         crate::ParserConfig {
             feature_flags: ParserFeature::V1,
+            ..Default::default()
         },
     );
     let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect();
@@ -169,6 +171,37 @@ pub fn tag_within_a_tag() {
         TAG_WITHIN_A_TAG,
         crate::ParserConfig {
             feature_flags: ParserFeature::V1,
+            ..Default::default()
+        },
+    );
+    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect();
+    assert!(tokens.iter().all(|x| x.is_text()));
+}
+
+const MISSKEYISH: &str = "$[tag]";
+
+#[test]
+pub fn misskeyish() {
+    let parser = BBParser::with_config(
+        MISSKEYISH,
+        crate::ParserConfig {
+            feature_flags: ParserFeature::V1,
+            brackets: &[("[", "]"), ("<", ">"), ("$[", "]")],
+        },
+    );
+    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect();
+    assert!(tokens.iter().all(|x| x.is_open("tag")));
+}
+
+const NO_MISMATCHED_TAGS: &str = "$[tag>";
+
+#[test]
+pub fn no_mismatched_tags() {
+    let parser = BBParser::with_config(
+        NO_MISMATCHED_TAGS,
+        crate::ParserConfig {
+            feature_flags: ParserFeature::V1,
+            brackets: &[("[", "]"), ("<", ">"), ("$[", "]")],
         },
     );
     let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect();

@@ -7,16 +7,28 @@ use static_assertions::{assert_impl_all, assert_not_impl_all};
 use bitflags::bitflags;
 
 /// Provides configuration information for [BBParser], including enabled feature flags.
-#[derive(Default)]
-pub struct ParserConfig {
+pub struct ParserConfig<'a> {
     /// Feature flags for this configuration.
     pub feature_flags: ParserFeature,
+    /// What bracket characters should be supported as tags.
+    pub brackets: &'a [(&'a str, &'a str)],
+}
+
+impl<'a> Default for ParserConfig<'a> {
+    fn default() -> Self {
+        Self {
+            feature_flags: ParserFeature::NONE,
+            brackets: &[("[", "]")],
+        }
+    }
 }
 
 bitflags! {
     /// Represents a set of flags.
     #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct ParserFeature: u32 {
+        const NONE = 0;
+
         /// Allow tags to be removed out of order.
         const POP_UNORDERED = 1 << 1;
 
@@ -57,7 +69,7 @@ where
     CustomTy: Clone,
 {
     input: &'a str,
-    config: ParserConfig,
+    config: ParserConfig<'a>,
     loc: usize,
     #[cfg(feature = "track_open_tags")]
     open_tags: Vec<Token<'a, CustomTy>>,
@@ -79,7 +91,7 @@ impl<'a> BBParser<'a> {
     }
 
     /// Constructs a new parser for the given input string and configuration.
-    pub fn with_config(input: &'a str, config: ParserConfig) -> BBParser<'a> {
+    pub fn with_config<'b: 'a>(input: &'a str, config: ParserConfig<'b>) -> BBParser<'a> {
         Self::with_config_and_custom(input, config)
     }
 }
@@ -106,9 +118,9 @@ impl<'a> BBParser<'a> {
     }
 
     /// Constructs a new parser for the given input string and configuration.
-    pub fn with_config_and_custom<CustomTy>(
+    pub fn with_config_and_custom<'b: 'a, CustomTy>(
         input: &'a str,
-        config: ParserConfig,
+        config: ParserConfig<'b>,
     ) -> BBParser<'a, CustomTy>
     where
         CustomTy: Clone,
@@ -142,6 +154,10 @@ where
         &self.input[(self.loc + after)..]
     }
 
+    pub fn config(&self) -> &ParserConfig<'_> {
+        &self.config
+    }
+
     #[cfg(feature = "track_open_tags")]
     /// Returns all tags the parser believes to currently be open (i.e. no close block yet found)
     pub fn open_tags(&self) -> &[Token<'a, CustomTy>] {
@@ -152,6 +168,35 @@ where
     /// Returns all tags the parser believes to have been closed at some point (excluding standalone tags.)
     pub fn closed_tags(&self) -> &[Token<'a, CustomTy>] {
         &self.closed_tags
+    }
+
+    fn starts_with_opener(&self, searchspace: &str) -> Option<(&str, &str)> {
+        self.config
+            .brackets
+            .iter()
+            .filter(|x| searchspace.starts_with(x.0))
+            .cloned()
+            .next()
+    }
+
+    fn contains_opener(&self, searchspace: &str) -> Option<&'a str> {
+        self.config
+            .brackets
+            .iter()
+            .map(|x| x.0).find(|x| searchspace.contains(x))
+    }
+
+    fn contains_closer_at(&self, searchspace: &str, closer: &str) -> Option<usize> {
+        searchspace.find(closer)
+    }
+
+    fn contains_opener_at(&self, searchspace: &str) -> Option<(usize, &'a str)> {
+        self.config
+            .brackets
+            .iter()
+            .map(|x| x.0)
+            .filter_map(|x| searchspace.find(x).map(|y| (y, x)))
+            .next()
     }
 }
 
@@ -204,13 +249,9 @@ where
             }
         }
 
-        const TAG_OPENERS: &[char] = &['['];
-
         if self.loc >= self.input.len() {
             return None;
         }
-
-        let first_char = self.remaining().chars().nth(0)?;
 
         let mut token = 'tk: {
             #[cfg(feature = "parser_rules")]
@@ -219,37 +260,34 @@ where
 
                 if let Some(rules::ParserRuleAction::CustomParser) = action {
                     let token = self.rule_stack.last_mut().unwrap().parse_custom(self.input);
-                    self.loc += token.span.len();
                     break 'tk token;
                 }
             }
 
+            let mut opener_found: Option<&str> = None;
+
             // If this block returns, then we failed to find any tag.
             'no_match: {
-                if TAG_OPENERS.contains(&first_char) {
+                if let Some((opener, closer)) = self.starts_with_opener(self.remaining()) {
+                    opener_found = Some(opener);
                     // We have a tag, figure out what it is.
-                    let loc = first_char.len_utf8();
-                    let rem_after = { &self.input[(self.loc + loc)..] };
+                    let loc = opener.len();
+                    let rem_after = &self.input[(self.loc + loc)..];
 
-                    let tag_end = rem_after.find(']');
-
-                    // This would be better if we had try blocks in stable.
-                    if tag_end.is_none() {
+                    let Some(tag_end) = self.contains_closer_at(rem_after, closer) else {
                         break 'no_match;
-                    }
+                    };
 
-                    let tag_end = tag_end.unwrap();
                     // We live in a wonderful world where trim() does not allocate. Bless.
                     let tag_contents = rem_after[..tag_end].trim();
 
                     // Catch ""tags"" that contain another tag, and refuse them.
-                    if tag_contents.matches(TAG_OPENERS).count() > 0 {
+                    if self.contains_opener(tag_contents).is_some() {
                         break 'no_match;
                     }
 
-                    let span = &self.input[self.loc..(self.loc + tag_end + "[]".len())];
-                    let old_loc = self.loc;
-                    self.loc += span.len();
+                    let span =
+                        &self.input[self.loc..(self.loc + tag_end + opener.len() + closer.len())];
 
                     if let Some(arg_idx) = tag_contents.find(['=', ' ']) {
                         let (tag, args) = tag_contents.split_at(arg_idx);
@@ -257,41 +295,40 @@ where
 
                         break 'tk Token::<'a, CustomTy> {
                             span,
-                            start: old_loc,
+                            start: self.loc,
                             kind: to_token_kind(tag, args),
                         };
                     } else {
                         break 'tk Token::<'a, CustomTy> {
                             span,
-                            start: old_loc,
+                            start: self.loc,
                             kind: to_token_kind_single(tag_contents),
                         };
                     }
                 }
             }
 
-            let segment_end = if !TAG_OPENERS.contains(&first_char) {
-                self.remaining()
-                    .match_indices(TAG_OPENERS)
-                    .nth(0)
+            let segment_end = if let Some(opener) = opener_found {
+                let offs = opener.len();
+                self.contains_opener_at(self.remaining_after(offs))
                     .map(|x| x.0)
-                    .unwrap_or(self.remaining().len())
+                    .unwrap_or(self.remaining_after(offs).len())
+                    + offs
             } else {
-                self.remaining_after("[".len())
-                    .match_indices(TAG_OPENERS)
-                    .nth(0)
-                    .map(|x| x.0 + "[".len())
+                self.contains_opener_at(self.remaining())
+                    .map(|x| x.0)
                     .unwrap_or(self.remaining().len())
             };
 
             let range = self.loc..(self.loc + segment_end);
-            self.loc += range.len();
             break 'tk Token::<'a, CustomTy> {
                 start: range.start,
                 span: &self.input[range],
                 kind: TokenKind::Text,
             };
         };
+
+        self.loc += token.span.len();
 
         #[cfg(feature = "parser_rules")]
         {
