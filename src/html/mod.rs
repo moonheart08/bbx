@@ -20,10 +20,10 @@ where
     /// Produce an open tag for the given token, pushing it into the given buffer.
     /// # Remarks
     /// The `out` buffer provided may already have contents, an implementation must not overwrite prior contents.
-    fn open_tag<'a>(
+    fn open_tag(
         &self,
         tk_writer: &dyn HtmlTokenWriter<CustomTy>,
-        token: &Token<'a, CustomTy>,
+        token: &Token<'_, CustomTy>,
         out: &mut String,
     );
 
@@ -42,10 +42,10 @@ where
     /// # Remarks
     /// The `out` buffer provided may already have contents, an implementation must not overwrite prior contents.
     /// Standalone tags MUST NOT rely on other tags around them.
-    fn standalone_tag<'a>(
+    fn standalone_tag(
         &self,
         tk_writer: &dyn HtmlTokenWriter<CustomTy>,
-        token: &Token<'a, CustomTy>,
+        token: &Token<'_, CustomTy>,
         out: &mut String,
     );
 
@@ -183,9 +183,9 @@ where
         self.tag_impls.push(tag);
     }
 
-    pub fn get_writer_for_tag(&self, tag_name: &str) -> Option<&Box<dyn HtmlTagWriter<CustomTy>>> {
+    pub fn get_writer_for_tag(&self, tag_name: &str) -> Option<&dyn HtmlTagWriter<CustomTy>> {
         if let Some(imp) = self.tag_cache.get(tag_name) {
-            return Some(&self.tag_impls[*imp]);
+            return Some(self.tag_impls[*imp].as_ref());
         }
 
         let idx: Option<usize> = 'idx: {
@@ -197,7 +197,7 @@ where
             None
         };
 
-        idx.map(|idx| &self.tag_impls[idx])
+        idx.map(|idx| self.tag_impls[idx].as_ref())
     }
 }
 

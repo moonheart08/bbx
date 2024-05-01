@@ -13,7 +13,6 @@ pub fn simple_escaped() {
     assert_eq!(serializer.serialize(parser), "<b>Foo&lt;b&gt;bar</b> baz.");
 }
 
-
 const SIMPLE: &str = "[title]This is a test![/title]";
 
 #[test]
