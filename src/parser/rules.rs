@@ -45,11 +45,12 @@ where
 }
 
 /// Prevents end users from implementing ParserRuleObj directly.
-trait Sealed {}
-
+mod private {
+    pub trait Sealed {}
+}
 /// Wrapper over parse rules to make them object safe, can't be implemented by end users.
 #[allow(private_bounds)]
-pub trait ParserRuleObj<'a, CustomTy = ()>: Sealed
+pub trait ParserRuleObj<'a, CustomTy = ()>: private::Sealed
 where
     CustomTy: Clone,
 {
@@ -80,7 +81,7 @@ where
 {
 }
 
-impl<'a, Rule, CustomTy> Sealed for ParserRuleImpl<'a, Rule, CustomTy>
+impl<'a, Rule, CustomTy> private::Sealed for ParserRuleImpl<'a, Rule, CustomTy>
 where
     Rule: ParserRule<'a, CustomTy>,
     CustomTy: Clone,
