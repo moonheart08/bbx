@@ -1,6 +1,6 @@
 #[cfg(any(feature = "track_open_tags", feature = "parser_rules"))]
 use alloc::vec;
-use static_assertions::assert_impl_all;
+use static_assertions::{assert_impl_all, assert_not_impl_all};
 use core::marker::PhantomData;
 
 use bitflags::bitflags;
@@ -60,6 +60,7 @@ where
 }
 
 assert_impl_all!(BBParser<'_, ()>: Send);
+assert_not_impl_all!(BBParser<'_, *const u8>: Send);
 
 /// Standard constructors.
 impl<'a> BBParser<'a> {
