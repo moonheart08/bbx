@@ -62,7 +62,6 @@ pub fn no_parse_rule() {
         if tk.is_open("noparse") {
             parser.push_rule(rules::builtin::NoParseRule::new("noparse"));
         }
-        println!("{:?}", tk);
     }
 
     let open_tags = parser.open_tags();
@@ -76,9 +75,7 @@ const NO_TAG_BLEED: &str = "[bar ]foo";
 pub fn no_tag_bleed() {
     let mut parser = BBParser::new(NO_TAG_BLEED);
     let bar = parser.next().unwrap();
-    println!("{:?}", bar);
     assert!(bar.span.contains("]"));
     let text = parser.next().unwrap();
-    println!("{:?}", text);
     assert!(!text.span.contains("]"))
 }
