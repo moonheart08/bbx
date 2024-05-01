@@ -10,17 +10,17 @@
 //!     println!("{:?}", token);
 //! }
 //! ```
-//! ## Built-in sanitized HTML output
-//! ```rust
-//! # use bbx::{BBParser, html::{*, builtins::*}};
-//! # const input: &str = "[title]This is a test document![/title]";
-//! // Simple serializer default with all of the v1.0.0 tags considered "core" to the library.
-//! let mut serializer: HtmlSerializer<SimpleHtmlWriter> =
-//!     HtmlSerializer::with_tags(all_core_v1_tags());
-//! let mut parser = BBParser::new(input);
-//! println!("Document:");
-//! println!("{}", serializer.serialize(parser));
-//! ```
+#![cfg_attr(feature = "html_gen", doc = r#"## Built-in sanitized HTML output
+```rust
+# use bbx::{BBParser, html::{*, builtins::*}};
+# const input: &str = "[title]This is a test document![/title]";
+// Simple serializer default with all of the v1.0.0 tags considered "core" to the library.
+let mut serializer: HtmlSerializer<SimpleHtmlWriter> =
+    HtmlSerializer::with_tags(all_core_v1_tags());
+let mut parser = BBParser::new(input);
+println!("Document:");
+println!("{}", serializer.serialize(parser));
+```"#)]
 //! # `no_std`
 #![cfg_attr(
     not(feature = "alloc"),
