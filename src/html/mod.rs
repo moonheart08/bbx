@@ -175,6 +175,24 @@ where
             }
         }
 
+        'outer: for tk in parser.open_tags() {
+            // Handle any dangling tags.
+            let Some(writer) = self.get_writer_for_tag(tk.tag_name().unwrap()) else {
+                self.writer.write_token(&tk, &mut out);
+                continue 'outer;
+            };
+
+            let Token { kind: TokenKind::OpenBBTag(tag_data, ..), .. } = tk else { unreachable!() };
+
+            let fake_close = Token {
+                span: tk.span,
+                start: tk.start,
+                kind: TokenKind::CloseBBTag(tag_data.clone(), None)
+            };
+
+            writer.close_tag(&self.writer, tk, &fake_close, &mut out);
+        }
+
         out
     }
 }

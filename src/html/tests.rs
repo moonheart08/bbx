@@ -23,3 +23,14 @@ pub fn simple() {
 
     assert_eq!(serializer.serialize(parser), "<h1>This is a test!</h1>");
 }
+
+const DANGLING: &str = "[title]This is a test!";
+
+#[test]
+pub fn dangling() {
+    let parser = BBParser::new(DANGLING);
+    let mut serializer =
+        HtmlSerializer::<SimpleHtmlWriter>::with_tags(builtins::all_core_v1_tags());
+
+    assert_eq!(serializer.serialize(parser), "<h1>This is a test!</h1>");
+}
