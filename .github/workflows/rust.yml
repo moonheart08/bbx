@@ -2,9 +2,9 @@ name: Cargo Build & Test
 
 on:
   push:
-    branches: [ "Master" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "Master" ]
+    branches: [ "master" ]
 
 env: 
   CARGO_TERM_COLOR: always
