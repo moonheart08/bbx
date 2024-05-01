@@ -18,34 +18,34 @@ pub fn simple_tags() {
         Some(Token {
             kind: TokenKind::OpenBBTag(_),
             ..
-        }))
-    );
+        })
+    ));
 
     assert!(matches!(
         parser.next(),
         Some(Token {
             kind: TokenKind::Text,
             ..
-        }))
-    );
+        })
+    ));
 
     assert!(matches!(
         parser.next(),
         Some(Token {
             kind: TokenKind::CloseBBTag(..),
             ..
-        }))
-    );
+        })
+    ));
 
     assert!(matches!(
         parser.next(),
         Some(Token {
             kind: TokenKind::Text,
             ..
-        }))
-    );
+        })
+    ));
 
-    assert!(matches!(parser.next(), None));
+    assert!(parser.next().is_none());
 }
 
 const NO_PARSE_RULE: &str = "[ bar ] [ noparse ]foo [/bar] [baz] asdfasd [/noparse]";
@@ -56,7 +56,7 @@ pub fn no_parse_rule() {
     use crate::rules;
 
     let mut parser = BBParser::new(NO_PARSE_RULE);
-    
+
     // Can't use a for loop here, unfortunately, as it keeps a permamnent mutable ref to parser.
     while let Some(tk) = parser.next() {
         if tk.is_open("noparse") {
@@ -75,7 +75,7 @@ const NO_TAG_BLEED: &str = "[bar ]foo";
 pub fn no_tag_bleed() {
     let mut parser = BBParser::new(NO_TAG_BLEED);
     let bar = parser.next().unwrap();
-    assert!(bar.span.contains("]"));
+    assert!(bar.span.contains(']'));
     let text = parser.next().unwrap();
-    assert!(!text.span.contains("]"))
+    assert!(!text.span.contains(']'))
 }

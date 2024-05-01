@@ -56,11 +56,12 @@ where
 
 //SAFETY: This is safe, we only implement Send when Rule is send, and CustomTy is never stored anywhere within ParserRuleImpl itself.
 //SAFETY: If there was a way to have PhantomData always implement Send+Sync (as we never store CustomTy ourselves, and if the Rule does their type reflects that), then this would be unnecessary.
-unsafe impl<'a, Rule, CustomTy> Send for ParserRuleImpl<'a, Rule, CustomTy> 
-where 
+unsafe impl<'a, Rule, CustomTy> Send for ParserRuleImpl<'a, Rule, CustomTy>
+where
     Rule: ParserRule<'a, CustomTy> + ?Sized + Send,
-    CustomTy: Clone
-{}
+    CustomTy: Clone,
+{
+}
 
 impl<'a, Rule, CustomTy> ParserRuleInner<'a, CustomTy> for ParserRuleImpl<'a, Rule, CustomTy>
 where

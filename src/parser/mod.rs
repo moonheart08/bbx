@@ -1,7 +1,7 @@
 #[cfg(any(feature = "track_open_tags", feature = "parser_rules"))]
 use alloc::vec;
-use static_assertions::{assert_impl_all, assert_not_impl_all};
 use core::marker::PhantomData;
+use static_assertions::{assert_impl_all, assert_not_impl_all};
 
 use bitflags::bitflags;
 
@@ -354,7 +354,7 @@ where
             TokenKind::StandaloneBBTag(BBTag { args, .. }) => Some(args),
             _ => None,
         };
-        
+
         match args {
             Some(args) if args.trim().is_empty() => Some(args.trim()),
             _ => None,
@@ -387,7 +387,7 @@ where
             false
         }
     }
-    
+
     /// Whether or not this tag is a close tag of the given type, without arguments.
     pub fn is_close_argless(&self, tag_name: &str) -> bool {
         self.is_close(tag_name) && self.args().is_none()

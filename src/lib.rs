@@ -21,7 +21,6 @@
 )]
 #![cfg_attr(feature = "track_open_tags", doc = "- `track_open_tags`")]
 #![cfg_attr(feature = "parser_rules", doc = "- `parser_rules`")]
-
 #![cfg_attr(
     not(any(feature = "track_open_tags", feature = "parser_rules")),
     no_std
