@@ -10,4 +10,5 @@
 <a href="https://discord.gg/ChVzW85C">
 ![Discord](https://img.shields.io/discord/1170413428393902170?link=https%3A%2F%2Fdiscord.gg%2FChVzW85C)
 </a>
+
 A (very work in progress) robust and minimal allocation BBCode parser with no_std support.
