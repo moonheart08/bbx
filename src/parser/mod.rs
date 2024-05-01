@@ -1,5 +1,6 @@
 #[cfg(any(feature = "track_open_tags", feature = "parser_rules"))]
 use alloc::vec;
+use alloc::{boxed::Box, vec::Vec};
 use core::marker::PhantomData;
 use static_assertions::{assert_impl_all, assert_not_impl_all};
 

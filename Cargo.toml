@@ -14,9 +14,10 @@ html-escape = { version = "0.2.13", optional = true }
 
 [features]
 default = ["html_gen", "track_open_tags", "parser_rules"]
-track_open_tags = []
-parser_rules = ["track_open_tags"]
-html_gen = ["track_open_tags", "parser_rules", "dep:html-escape"]
+alloc = []
+track_open_tags = ["alloc"]
+parser_rules = ["alloc", "track_open_tags"]
+html_gen = ["alloc", "track_open_tags", "parser_rules", "dep:html-escape"]
 nightly = []
 
 [package.metadata.release]

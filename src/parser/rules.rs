@@ -83,7 +83,7 @@ where
 }
 
 pub mod builtin {
-    use std::marker::PhantomData;
+    use core::marker::PhantomData;
 
     use crate::{parser::BBTag, Token, TokenKind};
 
@@ -128,7 +128,7 @@ where
         Rule: ParserRule<'a, CustomTy> + Send + 'a,
     {
         self.rule_stack
-            .push(Box::new(ParserRuleImpl::<'a, Rule, CustomTy> {
+            .push(alloc::boxed::Box::new(ParserRuleImpl::<'a, Rule, CustomTy> {
                 _customty: PhantomData,
                 _lifetime: PhantomData,
                 rule,

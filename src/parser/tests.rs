@@ -152,7 +152,7 @@ pub fn weird_but_still_closed() {
     let parser = BBParser::with_config(
         WEIRD_BUT_STILL_TEXT,
         crate::ParserConfig { feature_flags: ParserFeature::V1 });
-    let tokens: Vec<Token<'static, ()>> = parser.collect(); 
+    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect(); 
     assert!(tokens.iter().all(|x| x.is_text()));
 }
 
@@ -163,6 +163,6 @@ pub fn tag_within_a_tag() {
     let parser = BBParser::with_config(
         TAG_WITHIN_A_TAG,
         crate::ParserConfig { feature_flags: ParserFeature::V1 });
-    let tokens: Vec<Token<'static, ()>> = parser.collect(); 
+    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect(); 
     assert!(tokens.iter().all(|x| x.is_text()));
 }
