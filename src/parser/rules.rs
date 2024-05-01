@@ -18,14 +18,16 @@ where
 {
     const ACTION: ParserRuleAction;
 
-    /// Check if this rule should be released (removed) from the current parser, given the next token to be returned.
-    fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool;
+    /// Called whenever a new token has been produced, allowing the rule to transform a token. Upon returning false, the parser rule will be removed from the rule stack.
+    /// # Remarks
+    /// [transform_token][ParserRule::transform_token] is always called **before** open/close tag tracking, as such the current set of open tags will not contain the tag given,
+    /// and the transformer can emit open/close tags and expect them to be tracked correctly.
+    fn transform_token(&self, token: &mut Token<'_, CustomTy>) -> bool;
 
-    //TODO: Problem for tomorrow's me, this API doesn't actually work, custom parsers can never release and cannot control how much they parse.
     /// Provides a mechanism for custom parsing logic, should [ParserRule::ACTION] be [ParserRuleAction::CustomParser].
     /// Will not be called otherwise.
-    fn parse_custom<'b: 'a>(&mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy> {
-        unimplemented!("Parse custom triggered ")
+    fn parse_custom<'b: 'a>(&mut self, _parser: &'b str) -> Token<'a, CustomTy> {
+        unimplemented!("Parse custom triggered, but not implemented.")
     }
 }
 
@@ -36,9 +38,9 @@ where
 {
     fn action(&self) -> ParserRuleAction;
 
-    fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool;
+    fn transform_token(&self, next: &mut Token<'_, CustomTy>) -> bool;
 
-    fn parse_custom<'b: 'a>(&mut self, _parser: &'b BBParser<'b>) -> Option<CustomTy>;
+    fn parse_custom<'b: 'a>(&mut self, _parser: &'b str) -> Token<'a, CustomTy>;
 }
 
 /// Internal wrapper over parse rules to make them object safe, this is the struct containing the user provided rule.
@@ -61,11 +63,11 @@ where
         Rule::ACTION
     }
 
-    fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool {
-        self.rule.check_should_release(next)
+    fn transform_token(&self, next: &mut Token<'_, CustomTy>) -> bool {
+        self.rule.transform_token(next)
     }
 
-    fn parse_custom<'b: 'a>(&mut self, parser: &'b BBParser<'b>) -> Option<CustomTy> {
+    fn parse_custom<'b: 'a>(&mut self, parser: &'b str) -> Token<'a, CustomTy> {
         self.rule.parse_custom(parser)
     }
 }
@@ -97,7 +99,7 @@ pub mod builtin {
     {
         const ACTION: ParserRuleAction = ParserRuleAction::NoParse;
 
-        fn check_should_release(&self, next: &Token<'_, CustomTy>) -> bool {
+        fn transform_token(&self, next: &mut Token<'_, CustomTy>) -> bool {
             if let TokenKind::CloseBBTag(BBTag { tag, .. }, ..) = next.kind {
                 tag.eq_ignore_ascii_case(self.tag_name)
             } else {

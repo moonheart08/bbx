@@ -184,6 +184,22 @@ where
         let first_char = self.remaining().chars().nth(0)?;
 
         let mut token = 'tk: {
+            #[cfg(feature = "parser_rules")]
+            {
+                let action = self.rule_stack.last().map(|x| x.action());
+
+                if let Some(action) = action {
+                    match action {
+                        rules::ParserRuleAction::CustomParser => {
+                            let token = self.rule_stack.last_mut().unwrap().parse_custom(self.input);
+                            self.loc += token.span.len();
+                            break 'tk token;
+                        },
+                        _ => {},
+                    }
+                }
+            }
+
             // If this block returns, then we failed to find any tag.
             'no_match: {
                 if TAG_OPENERS.contains(&first_char) {
@@ -241,6 +257,33 @@ where
             };
         };
 
+        #[cfg(feature = "parser_rules")]
+        {
+            let do_pop = if let Some(rule) = self.rule_stack.last() {
+                rule.transform_token(&mut token)
+            } else {
+                false
+            };
+
+            if do_pop {
+                self.rule_stack.pop();
+            }
+
+            let action = self.rule_stack.last().map(|x| x.action());
+
+            if let Some(action) = action {
+                match action {
+                    rules::ParserRuleAction::NoParse => {
+                        token = Token::<'a, CustomTy> {
+                            kind: TokenKind::Text,
+                            ..token
+                        };
+                    }
+                    rules::ParserRuleAction::CustomParser => {},
+                }
+            }
+        }
+
         #[cfg(feature = "track_open_tags")]
         {
             if let TokenKind::OpenBBTag(_) = token.kind {
@@ -273,35 +316,6 @@ where
                 if let Some(to_remove) = to_remove {
                     // Might want to change the tags collection to be a linked list instead?
                     self.tags.remove(to_remove);
-                }
-            }
-        }
-
-        #[cfg(feature = "parser_rules")]
-        {
-            let do_pop = if let Some(rule) = self.rule_stack.last() {
-                rule.check_should_release(&token)
-            } else {
-                false
-            };
-
-            if do_pop {
-                self.rule_stack.pop();
-            }
-
-            let action = self.rule_stack.last().map(|x| x.action());
-
-            if let Some(action) = action {
-                match action {
-                    rules::ParserRuleAction::CustomParser => {
-                        todo!()
-                    }
-                    rules::ParserRuleAction::NoParse => {
-                        token = Token::<'a, CustomTy> {
-                            kind: TokenKind::Text,
-                            ..token
-                        };
-                    }
                 }
             }
         }
