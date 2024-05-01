@@ -183,7 +183,8 @@ where
         self.config
             .brackets
             .iter()
-            .map(|x| x.0).find(|x| searchspace.contains(x))
+            .map(|x| x.0)
+            .find(|x| searchspace.contains(x))
     }
 
     fn contains_closer_at(&self, searchspace: &str, closer: &str) -> Option<usize> {
