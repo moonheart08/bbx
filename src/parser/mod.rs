@@ -247,15 +247,13 @@ where
             }
 
             let segment_end = if !TAG_OPENERS.contains(&first_char) {
-                self
-                    .remaining()
+                self.remaining()
                     .match_indices(TAG_OPENERS)
                     .nth(0)
                     .map(|x| x.0)
                     .unwrap_or(self.remaining().len())
             } else {
-                self
-                    .remaining_after("[".len())
+                self.remaining_after("[".len())
                     .match_indices(TAG_OPENERS)
                     .nth(0)
                     .map(|x| x.0 + "[".len())

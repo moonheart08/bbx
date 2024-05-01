@@ -89,13 +89,16 @@ const TAG_KINDS: &str = "[open_argless][open args][open=args][/close_argless][/c
 pub fn tag_kinds() {
     let parser = BBParser::new(TAG_KINDS);
     tag_kinds_inner(parser);
-    let parser = BBParser::with_config(TAG_KINDS, crate::ParserConfig { feature_flags: ParserFeature::POP_UNORDERED });
+    let parser = BBParser::with_config(
+        TAG_KINDS,
+        crate::ParserConfig {
+            feature_flags: ParserFeature::POP_UNORDERED,
+        },
+    );
     tag_kinds_inner(parser);
 }
 
 fn tag_kinds_inner(mut parser: BBParser<'static>) {
-    
-
     // [open_argless]
     let tag = parser.next().unwrap();
     assert!(tag.is_open_argless("open_argless"));
