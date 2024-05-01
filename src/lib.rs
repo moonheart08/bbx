@@ -15,7 +15,6 @@
 //! }
 //! ```
 
-#![cfg_attr(test, feature(assert_matches))]
 #![cfg_attr(
     not(any(feature = "track_open_tags", feature = "parser_rules")),
     no_std

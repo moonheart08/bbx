@@ -376,8 +376,6 @@ pub mod rules;
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches::assert_matches;
-
     use crate::{BBParser, Token, TokenKind};
 
     const LOREM_IPSUM: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In lorem quam, fermentum id porttitor ac, iaculis eu arcu. Aliquam vulputate tempus felis consequat elementum. Cras auctor nunc a cursus lobortis. Fusce venenatis quam nec eleifend porta. Nulla velit diam, maximus sed lobortis imperdiet, hendrerit id elit. Integer congue congue porttitor. Curabitur at erat urna. Morbi iaculis felis eu est cursus, eu imperdiet nibh consectetur. Proin nisi metus, blandit non placerat hendrerit, facilisis id metus. Aenean fringilla, justo id venenatis rutrum, erat ex vehicula sapien, convallis aliquam augue turpis venenatis risus. In nulla lacus, auctor vitae sapien vel, tristique venenatis mi. Sed iaculis iaculis aliquet.";
@@ -393,38 +391,38 @@ mod tests {
     #[test]
     pub fn simple_tags() {
         let mut parser = BBParser::new(SIMPLE);
-        assert_matches!(
+        assert!(matches!(
             parser.next(),
             Some(Token {
                 kind: TokenKind::OpenBBTag(_),
                 ..
-            })
+            }))
         );
 
-        assert_matches!(
+        assert!(matches!(
             parser.next(),
             Some(Token {
                 kind: TokenKind::Text,
                 ..
-            })
+            }))
         );
 
-        assert_matches!(
+        assert!(matches!(
             parser.next(),
             Some(Token {
                 kind: TokenKind::CloseBBTag(..),
                 ..
-            })
+            }))
         );
 
-        assert_matches!(
+        assert!(matches!(
             parser.next(),
             Some(Token {
                 kind: TokenKind::Text,
                 ..
-            })
+            }))
         );
 
-        assert_matches!(parser.next(), None);
+        assert!(matches!(parser.next(), None));
     }
 }
