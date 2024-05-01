@@ -188,15 +188,10 @@ where
             {
                 let action = self.rule_stack.last().map(|x| x.action());
 
-                if let Some(action) = action {
-                    match action {
-                        rules::ParserRuleAction::CustomParser => {
-                            let token = self.rule_stack.last_mut().unwrap().parse_custom(self.input);
-                            self.loc += token.span.len();
-                            break 'tk token;
-                        },
-                        _ => {},
-                    }
+                if let Some(rules::ParserRuleAction::CustomParser) = action {
+                    let token = self.rule_stack.last_mut().unwrap().parse_custom(self.input);
+                    self.loc += token.span.len();
+                    break 'tk token;
                 }
             }
 
@@ -279,7 +274,7 @@ where
                             ..token
                         };
                     }
-                    rules::ParserRuleAction::CustomParser => {},
+                    rules::ParserRuleAction::CustomParser => {}
                 }
             }
         }
