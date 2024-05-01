@@ -152,8 +152,11 @@ const WEIRD_BUT_STILL_TEXT: &str = "[unclosed [/loneclose] text go here";
 pub fn weird_but_still_closed() {
     let parser = BBParser::with_config(
         WEIRD_BUT_STILL_TEXT,
-        crate::ParserConfig { feature_flags: ParserFeature::V1 });
-    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect(); 
+        crate::ParserConfig {
+            feature_flags: ParserFeature::V1,
+        },
+    );
+    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect();
     assert!(tokens.iter().all(|x| x.is_text()));
 }
 
@@ -164,7 +167,10 @@ const TAG_WITHIN_A_TAG: &str = "[not_a_real_tag [/loneclose]]";
 pub fn tag_within_a_tag() {
     let parser = BBParser::with_config(
         TAG_WITHIN_A_TAG,
-        crate::ParserConfig { feature_flags: ParserFeature::V1 });
-    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect(); 
+        crate::ParserConfig {
+            feature_flags: ParserFeature::V1,
+        },
+    );
+    let tokens: alloc::vec::Vec<Token<'static, ()>> = parser.collect();
     assert!(tokens.iter().all(|x| x.is_text()));
 }

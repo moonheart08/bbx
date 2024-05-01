@@ -64,7 +64,7 @@ where
     #[cfg(feature = "track_open_tags")]
     closed_tags: Vec<Token<'a, CustomTy>>,
     #[cfg(feature = "parser_rules")]
-    rule_stack: Vec<Box<dyn rules::ParserRuleInner<'a, CustomTy> + Send + 'a>>,
+    rule_stack: Vec<Box<dyn rules::ParserRuleObj<'a, CustomTy> + Send + 'a>>,
     _custom_ty: PhantomData<CustomTy>,
 }
 
@@ -351,8 +351,11 @@ where
                     let tk = self.open_tags.remove(to_remove);
                     self.closed_tags.push(tk);
                     token.rewrite_with_opening_tag(self.closed_tags.len() - 1);
-                    
-                } else if self.config.feature_flags.contains(ParserFeature::UNMATCHED_CLOSE_AS_TEXT) {
+                } else if self
+                    .config
+                    .feature_flags
+                    .contains(ParserFeature::UNMATCHED_CLOSE_AS_TEXT)
+                {
                     token.rewrite_as_text();
                 }
             }
@@ -391,6 +394,16 @@ where
 
         match args {
             Some(args) if !args.trim().is_empty() => Some(args.trim()),
+            _ => None,
+        }
+    }
+
+    /// The tag name for this tag.
+    pub fn tag_name(&self) -> Option<&str> {
+        match self.kind {
+            TokenKind::OpenBBTag(BBTag { tag, .. }) => Some(tag),
+            TokenKind::CloseBBTag(BBTag { tag, .. }, _) => Some(tag),
+            TokenKind::StandaloneBBTag(BBTag { tag, .. }) => Some(tag),
             _ => None,
         }
     }
@@ -463,7 +476,9 @@ where
     /// # Panics
     /// Panics if the tag is not a closing tag.
     pub fn rewrite_with_opening_tag(&mut self, idx: usize) {
-        let TokenKind::CloseBBTag(ref t, _) = self.kind else { unimplemented!("Can't set the opening tag index on anything except a closing tag!") };
+        let TokenKind::CloseBBTag(ref t, _) = self.kind else {
+            unimplemented!("Can't set the opening tag index on anything except a closing tag!")
+        };
 
         self.kind = TokenKind::CloseBBTag(t.clone(), Some(idx));
     }

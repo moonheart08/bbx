@@ -2,6 +2,8 @@ use core::marker::PhantomData;
 
 use crate::{BBParser, Token};
 
+pub type ParserRuleObjBox<'a, CustomTy> = Box<dyn ParserRuleObj<'a, CustomTy> + Send + 'a>;
+
 /// Represents an action a parser rule can take every [BBParser::next] call.
 pub enum ParserRuleAction {
     /// Implement a fully custom parse action, allowing the user to emit [`TokenKind::Custom`][`super::TokenKind::Custom`]s.
@@ -14,7 +16,8 @@ pub enum ParserRuleAction {
 /// Provides the common API for parser rules, allowing the programmer to modify parsing behavior.
 pub trait ParserRule<'a, CustomTy = ()>
 where
-    CustomTy: Clone,
+    CustomTy: Clone + 'a,
+    Self: Sized + Send + 'a,
 {
     const ACTION: ParserRuleAction;
 
@@ -30,10 +33,23 @@ where
     fn parse_custom<'b: 'a>(&mut self, _parser: &'b str) -> Token<'a, CustomTy> {
         unimplemented!("Parse custom triggered, but not implemented.")
     }
+
+    /// Boxes the given rule into a ParserRuleObj.
+    fn to_box(self) -> ParserRuleObjBox<'a, CustomTy> {
+        Box::new(ParserRuleImpl {
+            _customty: PhantomData,
+            _lifetime: PhantomData,
+            rule: self,
+        })
+    }
 }
 
-/// Internal wrapper over parse rules to make them object safe, this is the trait half of the deal.
-pub(super) trait ParserRuleInner<'a, CustomTy = ()>
+/// Prevents end users from implementing ParserRuleObj directly.
+trait Sealed {}
+
+/// Wrapper over parse rules to make them object safe, can't be implemented by end users.
+#[allow(private_bounds)]
+pub trait ParserRuleObj<'a, CustomTy = ()>: Sealed
 where
     CustomTy: Clone,
 {
@@ -48,7 +64,7 @@ where
 pub(super) struct ParserRuleImpl<'a, Rule, CustomTy>
 where
     Rule: ParserRule<'a, CustomTy> + ?Sized,
-    CustomTy: Clone,
+    CustomTy: Clone + 'a,
 {
     pub _customty: PhantomData<CustomTy>,
     pub _lifetime: PhantomData<&'a ()>,
@@ -64,7 +80,14 @@ where
 {
 }
 
-impl<'a, Rule, CustomTy> ParserRuleInner<'a, CustomTy> for ParserRuleImpl<'a, Rule, CustomTy>
+impl<'a, Rule, CustomTy> Sealed for ParserRuleImpl<'a, Rule, CustomTy>
+where
+    Rule: ParserRule<'a, CustomTy>,
+    CustomTy: Clone,
+{
+}
+
+impl<'a, Rule, CustomTy> ParserRuleObj<'a, CustomTy> for ParserRuleImpl<'a, Rule, CustomTy>
 where
     Rule: ParserRule<'a, CustomTy>,
     CustomTy: Clone,
@@ -105,7 +128,7 @@ pub mod builtin {
 
     impl<'a, 'rule_life: 'a, CustomTy> ParserRule<'a, CustomTy> for NoParseRule<'rule_life, CustomTy>
     where
-        CustomTy: Clone,
+        CustomTy: Clone + Send + 'a,
     {
         const ACTION: ParserRuleAction = ParserRuleAction::NoParse;
 
@@ -127,11 +150,19 @@ where
     where
         Rule: ParserRule<'a, CustomTy> + Send + 'a,
     {
-        self.rule_stack
-            .push(alloc::boxed::Box::new(ParserRuleImpl::<'a, Rule, CustomTy> {
+        self.rule_stack.push(alloc::boxed::Box::new(
+            ParserRuleImpl::<'a, Rule, CustomTy> {
                 _customty: PhantomData,
                 _lifetime: PhantomData,
                 rule,
-            }))
+            },
+        ))
+    }
+
+    pub fn push_rule_obj<Rule>(&mut self, rule: Box<dyn ParserRuleObj<'a, CustomTy> + Send>)
+    where
+        Rule: ParserRule<'a, CustomTy> + Send + 'a,
+    {
+        self.rule_stack.push(rule)
     }
 }

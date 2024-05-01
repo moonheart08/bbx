@@ -2,3 +2,5 @@
 # Library, no lockfile.
 Cargo.lock 
 lcov.info
+playground.rs
+playground.html
