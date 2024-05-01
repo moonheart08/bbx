@@ -147,6 +147,7 @@ pub fn unclosed_tag() {
 
 const WEIRD_BUT_STILL_TEXT: &str = "[unclosed [/loneclose] text go here";
 
+#[cfg(feature = "track_open_tags")]
 #[test]
 pub fn weird_but_still_closed() {
     let parser = BBParser::with_config(
@@ -158,6 +159,7 @@ pub fn weird_but_still_closed() {
 
 const TAG_WITHIN_A_TAG: &str = "[not_a_real_tag [/loneclose]]";
 
+#[cfg(feature = "track_open_tags")]
 #[test]
 pub fn tag_within_a_tag() {
     let parser = BBParser::with_config(
