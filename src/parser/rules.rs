@@ -119,9 +119,9 @@ pub mod builtin {
 
 impl<'a, CustomTy> BBParser<'a, CustomTy>
 where
-    CustomTy: Clone,
+    CustomTy: Clone + 'a,
 {
-    pub fn push_rule<Rule>(&'a mut self, rule: Rule)
+    pub fn push_rule<Rule>(&mut self, rule: Rule)
     where
         Rule: ParserRule<'a, CustomTy> + Send + 'a,
     {

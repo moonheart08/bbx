@@ -1,8 +1,4 @@
 //! Robust BBCode parser.
-#![cfg_attr(
-    not(any(feature = "track_open_tags", feature = "parser_rules")),
-    doc = "This feature set is `no_std` compatible, should you want that."
-)]
 //! # Examples
 //! ## Simple parsing
 //! ```rust
@@ -14,6 +10,17 @@
 //!     println!("{:?}", token);
 //! }
 //! ```
+//! # `no_std`
+#![cfg_attr(
+    not(any(feature = "track_open_tags", feature = "parser_rules")),
+    doc = "This feature set is `no_std` compatible, should you want that."
+)]
+#![cfg_attr(
+    any(feature = "track_open_tags", feature = "parser_rules"),
+    doc = "This feature set is not `no_std` compatible but is `alloc` compatible, due to the following features:"
+)]
+#![cfg_attr(feature = "track_open_tags", doc = "- `track_open_tags`")]
+#![cfg_attr(feature = "parser_rules", doc = "- `parser_rules`")]
 
 #![cfg_attr(
     not(any(feature = "track_open_tags", feature = "parser_rules")),

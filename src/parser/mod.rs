@@ -128,6 +128,12 @@ where
     pub fn remaining_after(&self, after: usize) -> &str {
         &self.input[(self.loc + after)..]
     }
+
+    #[cfg(feature = "track_open_tags")]
+    /// Returns all tags the parser believes to currently be open (i.e. no close block yet found)
+    pub fn open_tags(&self) -> &[Token<'a, CustomTy>] {
+        &self.tags
+    }
 }
 
 impl<'a, CustomTy> Iterator for BBParser<'a, CustomTy>
@@ -217,7 +223,7 @@ where
                     // We live in a wonderful world where trim() does not allocate. Bless.
                     let tag_contents = rem_after[..tag_end].trim();
 
-                    let span = &{ &self.input[self.loc..] }[..(tag_contents.len() + "[]".len())];
+                    let span = &self.input[self.loc..(self.loc + tag_end + "[]".len())];
                     let old_loc = self.loc;
                     self.loc += span.len();
 
@@ -334,6 +340,76 @@ where
     pub kind: TokenKind<'a, CustomTy>,
 }
 
+impl<'a, CustomTy> Token<'a, CustomTy>
+where
+    CustomTy: Clone,
+{
+    /// The arguments for this tag, if any are present.
+    /// # Remarks
+    /// This will discard arguments that are purely whitespace as defined by [str::trim], and return None in those scenarios.
+    pub fn args(&self) -> Option<&str> {
+        let args = match self.kind {
+            TokenKind::OpenBBTag(BBTag { args, .. }) => Some(args),
+            TokenKind::CloseBBTag(BBTag { args, .. }, _) => Some(args),
+            TokenKind::StandaloneBBTag(BBTag { args, .. }) => Some(args),
+            _ => None,
+        };
+        
+        match args {
+            Some(args) if args.trim().is_empty() => Some(args.trim()),
+            _ => None,
+        }
+    }
+
+    /// Whether or not this tag is an open tag of the given type.
+    /// # Remarks
+    /// This **ignores** the arguments of the tag, use [Token::is_open_argless] to ensure they're empty.
+    pub fn is_open(&self, tag_name: &str) -> bool {
+        if let TokenKind::OpenBBTag(BBTag { tag, .. }) = self.kind {
+            tag.eq_ignore_ascii_case(tag_name)
+        } else {
+            false
+        }
+    }
+
+    /// Whether or not this tag is an open tag of the given type, without arguments.
+    pub fn is_open_argless(&self, tag_name: &str) -> bool {
+        self.is_open(tag_name) && self.args().is_none()
+    }
+
+    /// Whether or not this tag is a close tag of the given type.
+    /// # Remarks
+    /// This **ignores** the arguments of the tag, use [Token::is_close_argless] to ensure they're empty.
+    pub fn is_close(&self, tag_name: &str) -> bool {
+        if let TokenKind::CloseBBTag(BBTag { tag, .. }, ..) = self.kind {
+            tag.eq_ignore_ascii_case(tag_name)
+        } else {
+            false
+        }
+    }
+    
+    /// Whether or not this tag is a close tag of the given type, without arguments.
+    pub fn is_close_argless(&self, tag_name: &str) -> bool {
+        self.is_close(tag_name) && self.args().is_none()
+    }
+
+    /// Whether or not this tag is a standalone tag of the given type.
+    /// # Remarks
+    /// This **ignores** the arguments of the tag, use [Token::is_standalone_argless] to ensure they're empty.
+    pub fn is_standalone(&self, tag_name: &str) -> bool {
+        if let TokenKind::StandaloneBBTag(BBTag { tag, .. }) = self.kind {
+            tag.eq_ignore_ascii_case(tag_name)
+        } else {
+            false
+        }
+    }
+
+    /// Whether or not this tag is a standalone tag of the given type, without arguments.
+    pub fn is_standalone_argless(&self, tag_name: &str) -> bool {
+        self.is_standalone(tag_name) && self.args().is_none()
+    }
+}
+
 impl<'a, CustomTy: core::fmt::Debug> core::fmt::Debug for Token<'a, CustomTy>
 where
     CustomTy: Clone,
@@ -379,54 +455,4 @@ pub enum TokenKind<'a, CustomTy = ()> {
 pub mod rules;
 
 #[cfg(test)]
-mod tests {
-    use crate::{BBParser, Token, TokenKind};
-
-    const LOREM_IPSUM: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In lorem quam, fermentum id porttitor ac, iaculis eu arcu. Aliquam vulputate tempus felis consequat elementum. Cras auctor nunc a cursus lobortis. Fusce venenatis quam nec eleifend porta. Nulla velit diam, maximus sed lobortis imperdiet, hendrerit id elit. Integer congue congue porttitor. Curabitur at erat urna. Morbi iaculis felis eu est cursus, eu imperdiet nibh consectetur. Proin nisi metus, blandit non placerat hendrerit, facilisis id metus. Aenean fringilla, justo id venenatis rutrum, erat ex vehicula sapien, convallis aliquam augue turpis venenatis risus. In nulla lacus, auctor vitae sapien vel, tristique venenatis mi. Sed iaculis iaculis aliquet.";
-
-    const SIMPLE: &str = "[bold]This is a test![/bold] and it's very cool.";
-
-    #[test]
-    pub fn just_text() {
-        let mut parser = BBParser::new(LOREM_IPSUM);
-        assert!(parser.all(|x| matches!(x.kind, TokenKind::Text)))
-    }
-
-    #[test]
-    pub fn simple_tags() {
-        let mut parser = BBParser::new(SIMPLE);
-        assert!(matches!(
-            parser.next(),
-            Some(Token {
-                kind: TokenKind::OpenBBTag(_),
-                ..
-            }))
-        );
-
-        assert!(matches!(
-            parser.next(),
-            Some(Token {
-                kind: TokenKind::Text,
-                ..
-            }))
-        );
-
-        assert!(matches!(
-            parser.next(),
-            Some(Token {
-                kind: TokenKind::CloseBBTag(..),
-                ..
-            }))
-        );
-
-        assert!(matches!(
-            parser.next(),
-            Some(Token {
-                kind: TokenKind::Text,
-                ..
-            }))
-        );
-
-        assert!(matches!(parser.next(), None));
-    }
-}
+mod tests;
