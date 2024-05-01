@@ -246,12 +246,21 @@ where
                 }
             }
 
-            let segment_end = self
-                .remaining()
-                .match_indices(TAG_OPENERS)
-                .nth(0)
-                .map(|x| x.0)
-                .unwrap_or(self.remaining().len());
+            let segment_end = if !TAG_OPENERS.contains(&first_char) {
+                self
+                    .remaining()
+                    .match_indices(TAG_OPENERS)
+                    .nth(0)
+                    .map(|x| x.0)
+                    .unwrap_or(self.remaining().len())
+            } else {
+                self
+                    .remaining_after("[".len())
+                    .match_indices(TAG_OPENERS)
+                    .nth(0)
+                    .map(|x| x.0 + "[".len())
+                    .unwrap_or(self.remaining().len())
+            };
 
             let range = self.loc..(self.loc + segment_end);
             self.loc += range.len();
@@ -356,7 +365,7 @@ where
         };
 
         match args {
-            Some(args) if args.trim().is_empty() => Some(args.trim()),
+            Some(args) if !args.trim().is_empty() => Some(args.trim()),
             _ => None,
         }
     }
@@ -408,12 +417,18 @@ where
     pub fn is_standalone_argless(&self, tag_name: &str) -> bool {
         self.is_standalone(tag_name) && self.args().is_none()
     }
+
+    /// Whether or not this token is just plain text.
+    pub fn is_text(&self) -> bool {
+        matches!(self.kind, TokenKind::Text)
+    }
 }
 
 impl<'a, CustomTy: core::fmt::Debug> core::fmt::Debug for Token<'a, CustomTy>
 where
     CustomTy: Clone,
 {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Token")
             .field("span", &self.span)

@@ -1,3 +1,4 @@
 /target
 # Library, no lockfile.
 Cargo.lock 
+lcov.info

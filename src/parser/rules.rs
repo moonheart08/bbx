@@ -26,6 +26,7 @@ where
 
     /// Provides a mechanism for custom parsing logic, should [ParserRule::ACTION] be [ParserRuleAction::CustomParser].
     /// Will not be called otherwise.
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn parse_custom<'b: 'a>(&mut self, _parser: &'b str) -> Token<'a, CustomTy> {
         unimplemented!("Parse custom triggered, but not implemented.")
     }

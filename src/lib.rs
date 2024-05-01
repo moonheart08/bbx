@@ -26,6 +26,8 @@
     no_std
 )]
 
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+
 #[cfg(any(feature = "track_open_tags", feature = "parser_rules"))]
 extern crate alloc;
 
