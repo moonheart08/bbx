@@ -11,5 +11,7 @@ bitflags = "^2"
 default = ["track_open_tags", "parser_rules"]
 track_open_tags = []
 parser_rules = ["track_open_tags"]
-simple_html = ["parser_rules"]
 nightly = []
+
+[package.metadata.release]
+owners = ["moonheart08"]
