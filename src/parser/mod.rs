@@ -1,5 +1,6 @@
 #[cfg(any(feature = "track_open_tags", feature = "parser_rules"))]
 use alloc::vec;
+use static_assertions::assert_impl_all;
 use core::marker::PhantomData;
 
 use bitflags::bitflags;
@@ -54,9 +55,11 @@ where
     #[cfg(feature = "track_open_tags")]
     tags: Vec<Token<'a, CustomTy>>,
     #[cfg(feature = "parser_rules")]
-    rule_stack: Vec<Box<dyn rules::ParserRuleInner<'a, CustomTy> + 'a>>,
+    rule_stack: Vec<Box<dyn rules::ParserRuleInner<'a, CustomTy> + Send + 'a>>,
     _custom_ty: PhantomData<CustomTy>,
 }
+
+assert_impl_all!(BBParser<'_, ()>: Send);
 
 /// Standard constructors.
 impl<'a> BBParser<'a> {
