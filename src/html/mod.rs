@@ -9,7 +9,7 @@ use crate::{rules::ParserRuleObjBox, BBParser, Token, TokenKind};
 /// The primary trait for converting BBCode tags to HTML.
 pub trait HtmlTagWriter<CustomTy = ()>
 where
-    CustomTy: Clone,
+    CustomTy: Clone + 'static,
 {
     /// Whether or not this generator is the correct generator for the given tag.
     /// # Remarks
@@ -52,7 +52,7 @@ where
     /// Try to produce a new parser rule to introduce from the given token.
     fn try_special<'a>(
         &self,
-        _token: &Token<'a, CustomTy>,
+        _token: &'_ Token<'a, CustomTy>,
     ) -> Option<ParserRuleObjBox<'a, CustomTy>> {
         None
     }
@@ -97,10 +97,12 @@ impl<Writer> HtmlSerializer<Writer>
 where
     Writer: HtmlTokenWriter<()> + Default,
 {
+    /// Construct a new serializer with no tags.
     pub fn empty() -> Self {
         Self::with_tags(vec![])
     }
 
+    /// Construct a new serializer with the given tags.
     pub fn with_tags(tags: Vec<Box<dyn HtmlTagWriter<()>>>) -> Self {
         Self::custom_with_tags(tags)
     }
@@ -111,6 +113,7 @@ where
     CustomTy: Clone,
     Writer: HtmlTokenWriter<CustomTy> + Default,
 {
+    /// Construct a new serializer with the given tags.
     pub fn custom_with_tags(tags: Vec<Box<dyn HtmlTagWriter<CustomTy>>>) -> Self {
         Self::custom(tags, Writer::default())
     }
@@ -121,6 +124,7 @@ where
     CustomTy: Clone,
     Writer: HtmlTokenWriter<CustomTy>,
 {
+    /// Construct a new serializer with the given tags and writer.
     pub fn custom(tag_impls: Vec<Box<dyn HtmlTagWriter<CustomTy>>>, writer: Writer) -> Self {
         Self {
             tag_impls,
@@ -132,9 +136,10 @@ where
 
 impl<Writer, CustomTy> HtmlSerializer<Writer, CustomTy>
 where
-    CustomTy: Clone,
+    CustomTy: Clone + 'static,
     Writer: HtmlTokenWriter<CustomTy>,
 {
+    /// Serialize the given BBCode 'document' out to HTML, using the provided writer and tags.
     pub fn serialize(&mut self, mut parser: BBParser<'_, CustomTy>) -> String {
         let mut out = String::with_capacity(parser.remaining().len());
 
@@ -161,6 +166,10 @@ where
                         }
                         _ => unreachable!(),
                     }
+
+                    if let Some(r) = writer.try_special(&tk) {
+                        parser.push_rule_obj(r);
+                    }
                 }
                 _ => self.writer.write_token(&tk, &mut out),
             }
@@ -172,17 +181,20 @@ where
 
 impl<Writer, CustomTy> HtmlSerializer<Writer, CustomTy>
 where
-    CustomTy: Clone,
+    CustomTy: Clone + 'static,
     Writer: HtmlTokenWriter<CustomTy>,
 {
+    /// Register the provided tags to the serializer.
     pub fn register_tags(&mut self, tags: &mut Vec<Box<dyn HtmlTagWriter<CustomTy>>>) {
         self.tag_impls.append(tags);
     }
 
+    /// Register the provided tag to the serializer.
     pub fn register_tag(&mut self, tag: Box<dyn HtmlTagWriter<CustomTy>>) {
         self.tag_impls.push(tag);
     }
 
+    /// Attempt to locate the implementation for the given tag, if one exists.
     pub fn get_writer_for_tag(&self, tag_name: &str) -> Option<&dyn HtmlTagWriter<CustomTy>> {
         if let Some(imp) = self.tag_cache.get(tag_name) {
             return Some(self.tag_impls[*imp].as_ref());

@@ -5,7 +5,7 @@ use super::HtmlTagWriter;
 
 impl<T: SimpleHtmlTagWriter<CustomTy>, CustomTy> HtmlTagWriter<CustomTy> for T
 where
-    CustomTy: Clone,
+    CustomTy: Clone + 'static,
 {
     fn match_tag(&self, tag: &str) -> bool {
         Self::TAGS.iter().any(|x| x.eq_ignore_ascii_case(tag))

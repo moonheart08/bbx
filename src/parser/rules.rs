@@ -159,10 +159,7 @@ where
         ))
     }
 
-    pub fn push_rule_obj<Rule>(&mut self, rule: Box<dyn ParserRuleObj<'a, CustomTy> + Send>)
-    where
-        Rule: ParserRule<'a, CustomTy> + Send + 'a,
-    {
+    pub fn push_rule_obj(&mut self, rule: Box<dyn ParserRuleObj<'a, CustomTy> + Send + 'a>) {
         self.rule_stack.push(rule)
     }
 }

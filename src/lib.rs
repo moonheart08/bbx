@@ -10,7 +10,9 @@
 //!     println!("{:?}", token);
 //! }
 //! ```
-#![cfg_attr(feature = "html_gen", doc = r#"## Built-in sanitized HTML output
+#![cfg_attr(
+    feature = "html_gen",
+    doc = r#"## Built-in sanitized HTML output
 ```rust
 # use bbx::{BBParser, html::{*, builtins::*}};
 # const input: &str = "[title]This is a test document![/title]";
@@ -20,7 +22,8 @@ let mut serializer: HtmlSerializer<SimpleHtmlWriter> =
 let mut parser = BBParser::new(input);
 println!("Document:");
 println!("{}", serializer.serialize(parser));
-```"#)]
+```"#
+)]
 //! # `no_std`
 #![cfg_attr(
     not(feature = "alloc"),
