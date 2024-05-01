@@ -19,6 +19,12 @@ bitflags! {
         /// Allow tags to be removed out of order.
         const POP_UNORDERED = 1 << 1;
 
+        /// Textualize close tags with no corresponding open tag, instead of preserving the token.
+        const UNMATCHED_CLOSE_AS_TEXT = 1 << 2;
+
+        /// All compatibility features in v1.0.0 and earlier.
+        const V1 = Self::POP_UNORDERED.bits() | Self::UNMATCHED_CLOSE_AS_TEXT.bits();
+
         /// All current and future feature flags.
         /// Prefer using one of the versioned versions of this mask (i.e. V1) if you have stability guarantees.
         const ALL = u32::MAX;
@@ -53,7 +59,9 @@ where
     config: ParserConfig,
     loc: usize,
     #[cfg(feature = "track_open_tags")]
-    tags: Vec<Token<'a, CustomTy>>,
+    open_tags: Vec<Token<'a, CustomTy>>,
+    #[cfg(feature = "track_open_tags")]
+    closed_tags: Vec<Token<'a, CustomTy>>,
     #[cfg(feature = "parser_rules")]
     rule_stack: Vec<Box<dyn rules::ParserRuleInner<'a, CustomTy> + Send + 'a>>,
     _custom_ty: PhantomData<CustomTy>,
@@ -87,7 +95,9 @@ impl<'a> BBParser<'a> {
             config: Default::default(),
             loc: 0,
             #[cfg(feature = "track_open_tags")]
-            tags: vec![],
+            open_tags: vec![],
+            #[cfg(feature = "track_open_tags")]
+            closed_tags: vec![],
             #[cfg(feature = "parser_rules")]
             rule_stack: vec![],
             _custom_ty: PhantomData,
@@ -107,7 +117,9 @@ impl<'a> BBParser<'a> {
             config,
             loc: 0,
             #[cfg(feature = "track_open_tags")]
-            tags: vec![],
+            open_tags: vec![],
+            #[cfg(feature = "track_open_tags")]
+            closed_tags: vec![],
             #[cfg(feature = "parser_rules")]
             rule_stack: vec![],
             _custom_ty: PhantomData,
@@ -132,7 +144,13 @@ where
     #[cfg(feature = "track_open_tags")]
     /// Returns all tags the parser believes to currently be open (i.e. no close block yet found)
     pub fn open_tags(&self) -> &[Token<'a, CustomTy>] {
-        &self.tags
+        &self.open_tags
+    }
+
+    #[cfg(feature = "track_open_tags")]
+    /// Returns all tags the parser believes to have been closed at some point (excluding standalone tags.)
+    pub fn closed_tags(&self) -> &[Token<'a, CustomTy>] {
+        &self.closed_tags
     }
 }
 
@@ -223,6 +241,11 @@ where
                     // We live in a wonderful world where trim() does not allocate. Bless.
                     let tag_contents = rem_after[..tag_end].trim();
 
+                    // Catch ""tags"" that contain another tag, and refuse them.
+                    if tag_contents.matches(TAG_OPENERS).count() > 0 {
+                        break 'no_match;
+                    }
+
                     let span = &self.input[self.loc..(self.loc + tag_end + "[]".len())];
                     let old_loc = self.loc;
                     self.loc += span.len();
@@ -286,10 +309,7 @@ where
             if let Some(action) = action {
                 match action {
                     rules::ParserRuleAction::NoParse => {
-                        token = Token::<'a, CustomTy> {
-                            kind: TokenKind::Text,
-                            ..token
-                        };
+                        token.rewrite_as_text();
                     }
                     rules::ParserRuleAction::CustomParser => {}
                 }
@@ -299,12 +319,12 @@ where
         #[cfg(feature = "track_open_tags")]
         {
             if let TokenKind::OpenBBTag(_) = token.kind {
-                self.tags.push(token.clone());
+                self.open_tags.push(token.clone());
             }
 
             if let TokenKind::CloseBBTag(BBTag { tag: removee, .. }, _) = token.kind {
                 let to_remove: Option<usize> = 'blk: {
-                    for (idx, tag) in self.tags.iter().enumerate().rev() {
+                    for (idx, tag) in self.open_tags.iter().enumerate().rev() {
                         if let TokenKind::OpenBBTag(ref t) = tag.kind {
                             if t.tag.eq_ignore_ascii_case(removee) {
                                 break 'blk Some(idx);
@@ -327,7 +347,12 @@ where
 
                 if let Some(to_remove) = to_remove {
                     // Might want to change the tags collection to be a linked list instead?
-                    self.tags.remove(to_remove);
+                    let tk = self.open_tags.remove(to_remove);
+                    self.closed_tags.push(tk);
+                    token.rewrite_with_opening_tag(self.closed_tags.len() - 1);
+                    
+                } else if self.config.feature_flags.contains(ParserFeature::UNMATCHED_CLOSE_AS_TEXT) {
+                    token.rewrite_as_text();
                 }
             }
         }
@@ -347,6 +372,7 @@ where
     pub kind: TokenKind<'a, CustomTy>,
 }
 
+/// Properties of a Token like its arguments or kind.
 impl<'a, CustomTy> Token<'a, CustomTy>
 where
     CustomTy: Clone,
@@ -419,6 +445,26 @@ where
     /// Whether or not this token is just plain text.
     pub fn is_text(&self) -> bool {
         matches!(self.kind, TokenKind::Text)
+    }
+}
+
+/// Token "rewriters", which modify the token in-place.
+impl<'a, CustomTy> Token<'a, CustomTy>
+where
+    CustomTy: Clone,
+{
+    /// Rewrite the token as text, in place, without altering any other properties.
+    pub fn rewrite_as_text(&mut self) {
+        self.kind = TokenKind::Text;
+    }
+
+    /// Mark the index of a close tag's opening tag within it, without altering anything else.
+    /// # Panics
+    /// Panics if the tag is not a closing tag.
+    pub fn rewrite_with_opening_tag(&mut self, idx: usize) {
+        let TokenKind::CloseBBTag(ref t, _) = self.kind else { unimplemented!("Can't set the opening tag index on anything except a closing tag!") };
+
+        self.kind = TokenKind::CloseBBTag(t.clone(), Some(idx));
     }
 }
 

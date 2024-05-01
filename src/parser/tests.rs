@@ -69,6 +69,7 @@ pub fn no_parse_rule() {
 
     let open_tags = parser.open_tags();
     assert!(open_tags.iter().any(|x| x.is_open("bar")));
+    assert_eq!(parser.closed_tags().len(), 1);
 }
 
 const NO_TAG_BLEED: &str = "[bar ]foo";
@@ -142,4 +143,26 @@ pub fn unclosed_tag() {
 
     assert!(parser.next().unwrap().is_text());
     assert!(parser.next().is_none());
+}
+
+const WEIRD_BUT_STILL_TEXT: &str = "[unclosed [/loneclose] text go here";
+
+#[test]
+pub fn weird_but_still_closed() {
+    let parser = BBParser::with_config(
+        WEIRD_BUT_STILL_TEXT,
+        crate::ParserConfig { feature_flags: ParserFeature::V1 });
+    let tokens: Vec<Token<'static, ()>> = parser.collect(); 
+    assert!(tokens.iter().all(|x| x.is_text()));
+}
+
+const TAG_WITHIN_A_TAG: &str = "[not_a_real_tag [/loneclose]]";
+
+#[test]
+pub fn tag_within_a_tag() {
+    let parser = BBParser::with_config(
+        TAG_WITHIN_A_TAG,
+        crate::ParserConfig { feature_flags: ParserFeature::V1 });
+    let tokens: Vec<Token<'static, ()>> = parser.collect(); 
+    assert!(tokens.iter().all(|x| x.is_text()));
 }
