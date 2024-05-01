@@ -47,7 +47,7 @@ extern crate alloc;
 
 mod parser;
 
-pub use parser::{BBParser, BBTag, ParserConfig, Token, TokenKind};
+pub use parser::{BBParser, BBTag, ParserConfig, ParserFeature, Token, TokenKind};
 
 #[cfg(feature = "parser_rules")]
 pub use parser::rules;

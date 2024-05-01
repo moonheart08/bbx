@@ -140,6 +140,8 @@ where
     Writer: HtmlTokenWriter<CustomTy>,
 {
     /// Serialize the given BBCode 'document' out to HTML, using the provided writer and tags.
+    /// # Remarks
+    /// This does not currently support out of order tags from [ParserFeature::POP_UNORDERED][crate::ParserFeature::POP_UNORDERED] and should not be used with it.
     pub fn serialize(&mut self, mut parser: BBParser<'_, CustomTy>) -> String {
         let mut out = String::with_capacity(parser.remaining().len());
 
